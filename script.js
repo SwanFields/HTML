@@ -1,0 +1,147 @@
+// อัตราแลกเปลี่ยน (เทียบกับดอลลาร์สหรัฐ)
+const exchangeRates = {
+    'THB': 35.5,
+    'USD': 1,
+    'EUR': 0.92
+};
+
+// ตัวแปรเก็บประวัติ
+let conversionHistory = [];
+
+function getConversionRate(fromCurrency, toCurrency) {
+    return exchangeRates[toCurrency] / exchangeRates[fromCurrency];
+}
+
+function updateCurrentTime() {
+    const now = new Date();
+    const timeString = now.toLocaleString('th-TH', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    document.getElementById('currentTime').textContent = timeString;
+}
+
+function updateConversion() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const fromCurrency = document.getElementById('fromCurrency').value;
+    const toCurrency = document.getElementById('toCurrency').value;
+
+    if (amount < 0) {
+        document.getElementById('result').value = 'กรุณากรอกจำนวนเงินที่ถูกต้อง';
+        return;
+    }
+
+    const rate = getConversionRate(fromCurrency, toCurrency);
+    const result = amount * rate;
+
+    document.getElementById('result').value = result.toFixed(2) + ' ' + toCurrency;
+    updateCurrentTime();
+}
+
+function swapCurrencies() {
+    const fromCurrency = document.getElementById('fromCurrency').value;
+    const toCurrency = document.getElementById('toCurrency').value;
+
+    document.getElementById('fromCurrency').value = toCurrency;
+    document.getElementById('toCurrency').value = fromCurrency;
+
+    updateConversion();
+}
+
+function clearData() {
+    document.getElementById('amount').value = '1';
+    document.getElementById('result').value = '';
+    updateConversion();
+}
+
+function saveToHistory() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const fromCurrency = document.getElementById('fromCurrency').value;
+    const toCurrency = document.getElementById('toCurrency').value;
+    const result = document.getElementById('result').value;
+
+    if (amount <= 0 || !result) {
+        alert('กรุณากรอกจำนวนเงินและแปลงก่อนบันทึก');
+        return;
+    }
+
+    const historyItem = {
+        id: Date.now(),
+        fromAmount: amount,
+        fromCurrency: fromCurrency,
+        toAmount: parseFloat(result),
+        toCurrency: toCurrency,
+        timestamp: new Date().toLocaleString('th-TH'),
+        rate: getConversionRate(fromCurrency, toCurrency).toFixed(4)
+    };
+
+    conversionHistory.unshift(historyItem);
+    localStorage.setItem('conversionHistory', JSON.stringify(conversionHistory));
+    displayHistory();
+    alert('บันทึกสำเร็จ!');
+}
+
+function displayHistory() {
+    const container = document.getElementById('historyContainer');
+
+    if (conversionHistory.length === 0) {
+        container.innerHTML = 'ไม่มีประวัติการแปลง';
+        return;
+    }
+
+    let html = '<table border="1" style="width:100%; border-collapse:collapse;">\n';
+    html += '<tr><th>ลำดับที่</th><th>จำนวนเงินต้นทาง</th><th>อัตราแลกเปลี่ยน</th><th>ผลลัพธ์</th><th>วันเวลา</th><th>ลบ</th></tr>\n';
+
+    conversionHistory.forEach((item, index) => {
+        html += '<tr>';
+        html += '<td>' + (index + 1) + '</td>';
+        html += '<td>' + item.fromAmount + ' ' + item.fromCurrency + '</td>';
+        html += '<td>1 ' + item.fromCurrency + ' = ' + item.rate + ' ' + item.toCurrency + '</td>';
+        html += '<td>' + item.toAmount.toFixed(2) + ' ' + item.toCurrency + '</td>';
+        html += '<td>' + item.timestamp + '</td>';
+        html += '<td><button onclick="deleteFromHistory(' + item.id + ')">ลบ</button></td>';
+        html += '</tr>\n';
+    });
+
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+function deleteFromHistory(id) {
+    if (confirm('คุณแน่ใจหรือว่าต้องการลบรายการนี้?')) {
+        conversionHistory = conversionHistory.filter(item => item.id !== id);
+        localStorage.setItem('conversionHistory', JSON.stringify(conversionHistory));
+        displayHistory();
+        alert('ลบสำเร็จ!');
+    }
+}
+
+function clearHistory() {
+    if (confirm('คุณแน่ใจหรือว่าต้องการลบประวัติทั้งหมด?')) {
+        conversionHistory = [];
+        localStorage.removeItem('conversionHistory');
+        displayHistory();
+        alert('ลบประวัติทั้งหมดสำเร็จ!');
+    }
+}
+
+function loadHistory() {
+    const saved = localStorage.getItem('conversionHistory');
+    if (saved) {
+        conversionHistory = JSON.parse(saved);
+        displayHistory();
+        alert('โหลดประวัติสำเร็จ!');
+    } else {
+        alert('ไม่มีประวัติที่บันทึกไว้');
+    }
+}
+
+window.addEventListener('load', () => {
+    loadHistory();
+    updateConversion();
+    updateCurrentTime();
+});
